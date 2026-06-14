@@ -1642,3 +1642,140 @@ body {
 .btn-success-sm:hover {
   background: #059669;
 }
+
+/* Smart Search Component */
+.smart-search-container {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.smart-search-header h3 {
+    color: #1e3c72;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.smart-search-header p {
+    color: #6b7280;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.smart-search-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.smart-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    transition: border-color 0.3s;
+}
+
+.smart-search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.smart-search-btn {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.smart-search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
+}
+
+.smart-search-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.smart-search-results {
+    margin-top: 1.5rem;
+}
+
+.smart-search-results h4 {
+    color: #1e3c72;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.smart-result-card {
+    background: #f8fafc;
+    border-left: 4px solid #3b82f6;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.smart-result-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #f1f5f9;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.similarity-badge {
+    background: #10b981;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.result-issue-id {
+    color: #6b7280;
+    font-size: 0.7rem;
+}
+
+.result-comment {
+    color: #1e293b;
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+}
+
+.result-user, .result-date {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+
+.no-results {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    background: #f8fafc;
+    border-radius: 12px;
+}

@@ -1,138 +1,33 @@
 import Comment from "../models/Comment.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import axios from "axios";
+import { generateVector, findSimilarItems } from "./vectorService.js";
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const NODE_URL = process.env.NODE_URL || "http://localhost:8002";
-
-// Helper function to create notification
-async function createNotification(userId, title, message, type, issueId, token) {
-    if (!userId) return;
-    
-    try {
-        const notificationData = {
-            userId: userId,
-            title: title,
-            message: message,
-            type: type,
-            relatedIssueId: issueId,
-            read: false
-        };
-        
-        await axios.post(`${NODE_URL}/notification/create`, notificationData, {
-            headers: { 'Token': token }
-        });
-        console.log(`Notification sent to user ${userId}: ${title}`);
-    } catch (error) {
-        console.error('Failed to send notification:', error.message);
-    }
-}
 
 export async function addComment(data, token) {
     try {
-        console.log("=== ADD COMMENT DEBUG ===");
-        console.log("Received data:", data);
+        const payload = jwt.verify(token, JWT_SECRET);
         
-        // Verify token
-        let payload = null;
-        try {
-            payload = jwt.verify(token, JWT_SECRET);
-            console.log("Token payload:", payload);
-        } catch (err) {
-            console.error("Token verification failed:", err.message);
-            return { code: 401, message: "Invalid or expired token" };
-        }
+        const userId = data.userId || payload.userId || payload.crid;
+        const userEmail = data.userEmail || payload.username;
+        const userFullname = data.userFullname || "User";
         
-        // Extract user info
-        let userId = data.userId || payload.userId || payload.crid || payload.id;
-        let userEmail = data.userEmail || payload.username || payload.email;
-        let userFullname = data.userFullname || payload.fullname || "User";
+        // Generate vector embedding for the comment
+        const vector = await generateVector(data.comment);
         
-        // Get issue details to know who to notify
-        let issueDetails = null;
-        try {
-            const issueResponse = await axios.get(`http://localhost:8001/issue/getissue/${data.issueId}`, {
-                headers: { 'Token': token }
-            });
-            issueDetails = issueResponse.data;
-            console.log("Issue details:", issueDetails);
-        } catch (err) {
-            console.error("Failed to fetch issue details:", err.message);
-        }
-        
-        // Create and save comment
-        const commentData = {
+        const comment = new Comment({
             issueId: Number(data.issueId),
             userId: Number(userId),
             userEmail: String(userEmail),
             userFullname: String(userFullname),
-            comment: String(data.comment)
-        };
+            comment: String(data.comment),
+            vector: vector  // ← Store the vector
+        });
         
-        const comment = new Comment(commentData);
         const savedComment = await comment.save();
-        
-        // ========== SEND NOTIFICATIONS ==========
-        if (issueDetails && issueDetails.issue) {
-            const issue = issueDetails.issue;
-            const commenterId = Number(userId);
-            const issueCreatorId = issue.createdBy;
-            const assignedDevId = issue.assignedTo;
-            
-            // 1. Notify Issue Creator (if they are not the commenter)
-            if (issueCreatorId && issueCreatorId !== commenterId) {
-                await createNotification(
-                    issueCreatorId,
-                    "💬 New Comment on Your Issue",
-                    `${userFullname} commented on your issue "${issue.title}"`,
-                    "COMMENT_ADDED",
-                    data.issueId,
-                    token
-                );
-            }
-            
-            // 2. Notify Assigned Developer (if different from commenter and creator)
-            if (assignedDevId && assignedDevId !== commenterId && assignedDevId !== issueCreatorId) {
-                await createNotification(
-                    assignedDevId,
-                    "💬 New Comment on Assigned Issue",
-                    `${userFullname} commented on issue "${issue.title}" assigned to you`,
-                    "COMMENT_ADDED",
-                    data.issueId,
-                    token
-                );
-            }
-            
-            // 3. Notify Admins (role = 3) - optional
-            // This would require fetching admin users from Spring Boot
-            try {
-                const adminsResponse = await axios.get('http://localhost:8001/user/getallusers/1/100', {
-                    headers: { 'Token': token }
-                });
-                if (adminsResponse.data && adminsResponse.data.users) {
-                    const admins = adminsResponse.data.users.filter(u => u.role === 3);
-                    for (const admin of admins) {
-                        if (admin.id !== commenterId && admin.id !== issueCreatorId && admin.id !== assignedDevId) {
-                            await createNotification(
-                                admin.id,
-                                "💬 New Comment on Issue",
-                                `${userFullname} commented on issue #${data.issueId}: "${issue.title}"`,
-                                "COMMENT_ADDED",
-                                data.issueId,
-                                token
-                            );
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to notify admins:", err.message);
-            }
-        }
-        
-        console.log("Comment saved successfully with notifications sent");
         
         return { 
             code: 200, 
@@ -140,7 +35,7 @@ export async function addComment(data, token) {
             comment: savedComment 
         };
     } catch (error) {
-        console.error("Add comment error details:", error);
+        console.error("Add comment error:", error);
         return { code: 500, message: error.message };
     }
 }
@@ -159,6 +54,28 @@ export async function getIssueComments(issueId, token) {
         };
     } catch (error) {
         console.error("Get comments error:", error);
+        return { code: 500, message: error.message };
+    }
+}
+
+// NEW: Vector search for similar comments
+export async function vectorSearch(query, token, limit = 5) {
+    try {
+        jwt.verify(token, JWT_SECRET);
+        
+        // Get all comments (in production, you'd want to filter by issue)
+        const allComments = await Comment.find({});
+        
+        // Find similar comments using vector search
+        const similarComments = await findSimilarItems(query, allComments, limit);
+        
+        return { 
+            code: 200, 
+            results: similarComments,
+            count: similarComments.length 
+        };
+    } catch (error) {
+        console.error("Vector search error:", error);
         return { code: 500, message: error.message };
     }
 }

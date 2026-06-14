@@ -13,6 +13,13 @@ router.get("/issue/:ISSUE_ID", async (req, res) => {
     res.status(response.code).json(response);
 });
 
+// NEW: Vector search endpoint
+router.get("/vectorsearch/:QUERY", async (req, res) => {
+    const { QUERY } = req.params;
+    const response = await commentService.vectorSearch(QUERY, req.headers.token);
+    res.json(response);
+});
+
 router.delete("/:COMMENT_ID", async (req, res) => {
     const response = await commentService.deleteComment(req.params.COMMENT_ID, req.headers.token);
     res.status(response.code).json(response);

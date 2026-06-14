@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyIssues, getAssignedToMe, getAllIssues, getAllUsers, getAllDevelopers } from '../api';
 import LandingPage from './LandingPage';
+import SmartSearch from './SmartSearch';
 
 function Dashboard({ user }) {
   const [stats, setStats] = useState({
@@ -135,6 +136,9 @@ function Dashboard({ user }) {
           </div>
         ))}
       </div>
+
+      {/* AI-Powered Smart Search Component */}
+      <SmartSearch />
 
       {recentIssues.length > 0 && (
         <div className="content-card">

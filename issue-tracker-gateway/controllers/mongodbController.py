@@ -200,3 +200,11 @@ async def get_priority_summary(Token: str = Header(...)):
             return response.json()
     except Exception as e:
         return {"code": 500, "message": f"Error getting priority summary: {str(e)}"}
+@router.get("/comment/vectorsearch/{QUERY}")
+async def vector_search_comments(QUERY: str, Token: str = Header(...)):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{NODE_URL}/comment/vectorsearch/{QUERY}",
+            headers={"Token": Token}
+        )
+    return response.json()        
