@@ -1,0 +1,14 @@
+# Dependencies 
+issue-tracker-frontend/node_modules/ 
+issue-tracker-frontend/dist/ 
+issue-tracker-frontend/.env 
+IssueTracking_And_ResolutionDashboard/target/ 
+IssueTracking_And_ResolutionDashboard/.mvn/ 
+node-mongodb-gateway/node_modules/ 
+node-mongodb-gateway/.env 
+issue-tracker-gateway/__pycache__/ 
+issue-tracker-gateway/venv/ 
+issue-tracker-gateway/.env 
+.idea/ 
+.vscode/ 
+.DS_Store 
