@@ -52,7 +52,6 @@ export const getUserInfo = async () => {
   });
   
   if (result.code === 200) {
-    // Store complete user info in localStorage
     localStorage.setItem('userInfo', JSON.stringify({
       userId: result.userId,
       fullname: result.fullname,
@@ -70,7 +69,6 @@ export const logout = () => {
   localStorage.removeItem('userInfo');
 };
 
-// Get all developers (for admin)
 export const getAllDevelopers = async () => {
   return apiRequest('/authservice/getalldevelopers', {
     method: 'GET',
@@ -110,7 +108,6 @@ export const assignIssue = async (issueId, developerId) => {
   });
 };
 
-// Update issue status
 export const updateIssueStatus = async (issueId, status) => {
   return apiRequest(`/issueservice/updatestatus/${issueId}`, {
     method: 'PUT',
@@ -118,14 +115,12 @@ export const updateIssueStatus = async (issueId, status) => {
   });
 };
 
-// Close issue (admin only)
 export const closeIssue = async (issueId) => {
   return apiRequest(`/issueservice/close/${issueId}`, {
     method: 'PUT',
   });
 };
 
-// Get single issue details
 export const getIssueById = async (issueId) => {
   return apiRequest(`/issueservice/getissue/${issueId}`, {
     method: 'GET',
@@ -153,7 +148,6 @@ export const deleteUser = async (userId) => {
 };
 
 // ========== COMMENT SERVICES ==========
-// Add comment to issue
 export const addComment = async (commentData) => {
   return apiRequest('/mongoservice/comment/add', {
     method: 'POST',
@@ -161,50 +155,51 @@ export const addComment = async (commentData) => {
   });
 };
 
-// Get comments for an issue
 export const getIssueComments = async (issueId) => {
   return apiRequest(`/mongoservice/comment/issue/${issueId}`, {
     method: 'GET',
   });
 };
 
-// Delete a comment
 export const deleteComment = async (commentId) => {
   return apiRequest(`/mongoservice/comment/${commentId}`, {
     method: 'DELETE',
   });
 };
 
+// NEW: Edit comment
+export const editComment = async (commentId, newComment) => {
+  return apiRequest(`/mongoservice/comment/${commentId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ comment: newComment }),
+  });
+};
+
 // ========== NOTIFICATION SERVICES ==========
-// Get user notifications
 export const getUserNotifications = async (userId) => {
   return apiRequest(`/mongoservice/notification/user/${userId}`, {
     method: 'GET',
   });
 };
 
-// Get unread notification count
 export const getUnreadNotificationsCount = async (userId) => {
   return apiRequest(`/mongoservice/notification/user/${userId}/unread`, {
     method: 'GET',
   });
 };
 
-// Mark notification as read
 export const markNotificationRead = async (notificationId) => {
   return apiRequest(`/mongoservice/notification/read/${notificationId}`, {
     method: 'PUT',
   });
 };
 
-// Mark all notifications as read
 export const markAllNotificationsRead = async (userId) => {
   return apiRequest(`/mongoservice/notification/user/${userId}/read-all`, {
     method: 'PUT',
   });
 };
 
-// Delete notification
 export const deleteNotification = async (notificationId) => {
   return apiRequest(`/mongoservice/notification/${notificationId}`, {
     method: 'DELETE',
@@ -212,14 +207,12 @@ export const deleteNotification = async (notificationId) => {
 };
 
 // ========== HISTORY SERVICES ==========
-// Get issue history
 export const getIssueHistory = async (issueId) => {
   return apiRequest(`/mongoservice/history/issue/${issueId}`, {
     method: 'GET',
   });
 };
 
-// Get all history (admin)
 export const getAllHistory = async () => {
   return apiRequest('/mongoservice/history/all', {
     method: 'GET',
@@ -227,28 +220,24 @@ export const getAllHistory = async () => {
 };
 
 // ========== ANALYTICS SERVICES ==========
-// Get status summary for dashboard
 export const getStatusSummary = async () => {
   return apiRequest('/mongoservice/analytics/status-summary', {
     method: 'GET',
   });
 };
 
-// Get priority summary
 export const getPrioritySummary = async () => {
   return apiRequest('/mongoservice/analytics/priority-summary', {
     method: 'GET',
   });
 };
 
-// Get user activity analytics
 export const getUserActivity = async () => {
   return apiRequest('/mongoservice/analytics/user-activity', {
     method: 'GET',
   });
 };
 
-// Get activity timeline
 export const getActivityTimeline = async (days = 7) => {
   return apiRequest(`/mongoservice/analytics/activity-timeline?days=${days}`, {
     method: 'GET',
@@ -256,13 +245,11 @@ export const getActivityTimeline = async (days = 7) => {
 };
 
 // ========== HELPER FUNCTIONS ==========
-// Check if user is authenticated
 export const isAuthenticated = () => {
   const token = localStorage.getItem('token');
   return !!token;
 };
 
-// Get current user info from localStorage
 export const getCurrentUser = () => {
   const userInfo = localStorage.getItem('userInfo');
   if (userInfo) {
@@ -271,7 +258,6 @@ export const getCurrentUser = () => {
   return null;
 };
 
-// Set auth token manually (if needed)
 export const setAuthToken = (token) => {
   if (token) {
     localStorage.setItem('token', token);
@@ -280,7 +266,6 @@ export const setAuthToken = (token) => {
   }
 };
 
-// Clear all auth data
 export const clearAuthData = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('userInfo');

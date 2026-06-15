@@ -15,7 +15,6 @@ export async function addComment(data, token) {
         const userEmail = data.userEmail || payload.username;
         const userFullname = data.userFullname || "User";
         
-        // Generate vector embedding for the comment
         const vector = await generateVector(data.comment);
         
         const comment = new Comment({
@@ -24,7 +23,7 @@ export async function addComment(data, token) {
             userEmail: String(userEmail),
             userFullname: String(userFullname),
             comment: String(data.comment),
-            vector: vector  // ← Store the vector
+            vector: vector
         });
         
         const savedComment = await comment.save();
@@ -58,15 +57,11 @@ export async function getIssueComments(issueId, token) {
     }
 }
 
-// NEW: Vector search for similar comments
 export async function vectorSearch(query, token, limit = 5) {
     try {
         jwt.verify(token, JWT_SECRET);
         
-        // Get all comments (in production, you'd want to filter by issue)
         const allComments = await Comment.find({});
-        
-        // Find similar comments using vector search
         const similarComments = await findSimilarItems(query, allComments, limit);
         
         return { 
@@ -103,6 +98,47 @@ export async function deleteComment(commentId, token) {
         return { code: 200, message: "Comment deleted successfully" };
     } catch (error) {
         console.error("Delete comment error:", error);
+        return { code: 500, message: error.message };
+    }
+}
+
+// NEW: Edit comment
+export async function editComment(commentId, newCommentData, token) {
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        
+        const comment = await Comment.findById(commentId);
+        
+        if (!comment) {
+            return { code: 404, message: "Comment not found" };
+        }
+        
+        const userRole = payload.role;
+        const isAdmin = userRole === 3;
+        const isAuthor = comment.userId === (payload.userId || payload.crid);
+        
+        if (!isAdmin && !isAuthor) {
+            return { code: 403, message: "Unauthorized to edit this comment" };
+        }
+        
+        // Update comment text
+        comment.comment = newCommentData.comment;
+        
+        // Generate new vector embedding for the edited comment
+        const newVector = await generateVector(newCommentData.comment);
+        if (newVector) {
+            comment.vector = newVector;
+        }
+        
+        await comment.save();
+        
+        return { 
+            code: 200, 
+            message: "Comment updated successfully", 
+            comment: comment 
+        };
+    } catch (error) {
+        console.error("Edit comment error:", error);
         return { code: 500, message: error.message };
     }
 }

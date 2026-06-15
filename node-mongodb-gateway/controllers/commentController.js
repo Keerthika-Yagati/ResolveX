@@ -13,11 +13,16 @@ router.get("/issue/:ISSUE_ID", async (req, res) => {
     res.status(response.code).json(response);
 });
 
-// NEW: Vector search endpoint
 router.get("/vectorsearch/:QUERY", async (req, res) => {
     const { QUERY } = req.params;
     const response = await commentService.vectorSearch(QUERY, req.headers.token);
     res.json(response);
+});
+
+// ✅ Make sure this PUT endpoint exists
+router.put("/:COMMENT_ID", async (req, res) => {
+    const response = await commentService.editComment(req.params.COMMENT_ID, req.body, req.headers.token);
+    res.status(response.code).json(response);
 });
 
 router.delete("/:COMMENT_ID", async (req, res) => {

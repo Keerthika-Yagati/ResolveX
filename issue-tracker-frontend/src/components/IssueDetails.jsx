@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getIssueById, getIssueComments, addComment, getIssueHistory } from '../api';
+import { getIssueById, getIssueComments, addComment, getIssueHistory, deleteComment, editComment } from '../api';
 
 function IssueDetails({ user }) {
     const { id } = useParams();
@@ -12,12 +12,11 @@ function IssueDetails({ user }) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('comments');
     const [submitting, setSubmitting] = useState(false);
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editingCommentText, setEditingCommentText] = useState('');
 
     useEffect(() => {
         loadIssueDetails();
-        // Debug: Log user data when component mounts
-        console.log('IssueDetails - User prop:', user);
-        console.log('IssueDetails - localStorage userInfo:', localStorage.getItem('userInfo'));
     }, [id]);
 
     const loadIssueDetails = async () => {
@@ -52,54 +51,23 @@ function IssueDetails({ user }) {
         
         setSubmitting(true);
         
-        // Try to get user info from multiple sources
         let userId = null;
         let userEmail = null;
         let userFullname = null;
         
-        // Source 1: user prop from App.js
         if (user) {
             userId = user.userId;
             userEmail = user.email || user.username;
             userFullname = user.fullname;
-            console.log('Source 1 (user prop):', { userId, userEmail, userFullname });
         }
         
-        // Source 2: localStorage userInfo
         const storedUserInfo = localStorage.getItem('userInfo');
         if (storedUserInfo) {
             const parsedInfo = JSON.parse(storedUserInfo);
             if (!userId) userId = parsedInfo.userId;
             if (!userEmail) userEmail = parsedInfo.email || parsedInfo.username;
             if (!userFullname) userFullname = parsedInfo.fullname;
-            console.log('Source 2 (localStorage):', parsedInfo);
         }
-        
-        // Source 3: Try to get from token or make a new API call
-        if (!userId) {
-            console.log('No userId found, trying to fetch fresh user info...');
-            try {
-                const { getUserInfo } = await import('../api');
-                const freshUserInfo = await getUserInfo();
-                if (freshUserInfo.code === 200) {
-                    userId = freshUserInfo.userId;
-                    userEmail = freshUserInfo.email || freshUserInfo.username;
-                    userFullname = freshUserInfo.fullname;
-                    console.log('Source 3 (fresh API call):', { userId, userEmail, userFullname });
-                }
-            } catch (err) {
-                console.error('Failed to fetch fresh user info:', err);
-            }
-        }
-        
-        // Final validation
-        console.log('Final data being sent:', {
-            issueId: parseInt(id),
-            comment: newComment,
-            userId: userId,
-            userEmail: userEmail,
-            userFullname: userFullname
-        });
         
         if (!userId) {
             alert('User information not found. Please logout and login again.');
@@ -111,12 +79,10 @@ function IssueDetails({ user }) {
             const result = await addComment({
                 issueId: parseInt(id),
                 comment: newComment,
-                userId: Number(userId),  // Ensure it's a number
+                userId: Number(userId),
                 userEmail: userEmail || 'user@example.com',
                 userFullname: userFullname || 'User'
             });
-            
-            console.log('Comment API response:', result);
             
             if (result.code === 200) {
                 setNewComment('');
@@ -133,7 +99,62 @@ function IssueDetails({ user }) {
         }
     };
 
-    // Rest of your component remains the same...
+    const handleDeleteComment = async (commentId, e) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this comment?')) {
+            try {
+                const result = await deleteComment(commentId);
+                if (result.code === 200) {
+                    await loadIssueDetails();
+                    alert('Comment deleted successfully!');
+                } else {
+                    alert(result.message || 'Failed to delete comment');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        }
+    };
+
+    const handleStartEdit = (comment, e) => {
+        e.stopPropagation();
+        setEditingCommentId(comment._id);
+        setEditingCommentText(comment.comment);
+    };
+
+    const handleCancelEdit = (e) => {
+        e.stopPropagation();
+        setEditingCommentId(null);
+        setEditingCommentText('');
+    };
+
+    const handleSaveEdit = async (commentId, e) => {
+        e.stopPropagation();
+        if (!editingCommentText.trim()) {
+            alert('Comment cannot be empty');
+            return;
+        }
+        
+        try {
+            const result = await editComment(commentId, editingCommentText);
+            if (result.code === 200) {
+                await loadIssueDetails();
+                setEditingCommentId(null);
+                setEditingCommentText('');
+                alert('Comment updated successfully!');
+            } else {
+                alert(result.message || 'Failed to update comment');
+            }
+        } catch (error) {
+            alert('Network error. Please try again.');
+        }
+    };
+
+    const canModifyComment = (comment) => {
+        if (!user) return false;
+        return user.role === 3 || comment.userId === user.userId;
+    };
+
     const getPriorityColor = (priority) => {
         switch(priority) {
             case 'high': return '#dc3545';
@@ -157,7 +178,7 @@ function IssueDetails({ user }) {
     if (loading) {
         return (
             <div className="dashboard">
-                <div className="content-section">
+                <div className="content-card">
                     <p>Loading issue details...</p>
                 </div>
             </div>
@@ -167,7 +188,7 @@ function IssueDetails({ user }) {
     if (!issue) {
         return (
             <div className="dashboard">
-                <div className="content-section">
+                <div className="content-card">
                     <p>Issue not found</p>
                     <button onClick={() => navigate('/')} className="btn-primary">Go Back</button>
                 </div>
@@ -177,7 +198,7 @@ function IssueDetails({ user }) {
 
     return (
         <div className="dashboard">
-            <div className="content-section">
+            <div className="content-card">
                 <button onClick={() => navigate(-1)} className="btn-secondary" style={{ marginBottom: '1rem' }}>
                     ← Back to Issues
                 </button>
@@ -202,24 +223,24 @@ function IssueDetails({ user }) {
                             Status: {issue.status.toUpperCase()}
                         </span>
                         <span>📅 Created: {new Date(issue.createdDate).toLocaleString()}</span>
-                        <span>👤 Created By: User #{issue.createdBy}</span>
-                        {issue.assignedTo && <span>👨‍💻 Assigned To: Developer #{issue.assignedTo}</span>}
+                        <span>👤 Created By: {issue.createdBy === user?.userId ? 'You' : `User #${issue.createdBy}`}</span>
+                        {issue.assignedTo && <span>👨‍💻 Assigned To: {issue.assignedTo === user?.userId ? 'You' : `Developer #${issue.assignedTo}`}</span>}
                     </div>
                 </div>
 
-                <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f9f9f9', borderRadius: '10px' }}>
+                <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
                     <h3>Description</h3>
                     <p style={{ marginTop: '0.5rem', lineHeight: '1.6' }}>{issue.description}</p>
                 </div>
 
-                <div style={{ marginBottom: '1rem', borderBottom: '2px solid #e0e0e0', display: 'flex', gap: '0.5rem' }}>
+                <div style={{ marginBottom: '1rem', borderBottom: '2px solid #e5e7eb', display: 'flex', gap: '0.5rem' }}>
                     <button
                         onClick={() => setActiveTab('comments')}
                         style={{
                             padding: '0.75rem 1.5rem',
                             border: 'none',
-                            background: activeTab === 'comments' ? '#667eea' : 'transparent',
-                            color: activeTab === 'comments' ? 'white' : '#333',
+                            background: activeTab === 'comments' ? '#3b82f6' : 'transparent',
+                            color: activeTab === 'comments' ? 'white' : '#1e293b',
                             cursor: 'pointer',
                             borderRadius: '8px 8px 0 0',
                             fontWeight: 'bold'
@@ -232,8 +253,8 @@ function IssueDetails({ user }) {
                         style={{
                             padding: '0.75rem 1.5rem',
                             border: 'none',
-                            background: activeTab === 'history' ? '#667eea' : 'transparent',
-                            color: activeTab === 'history' ? 'white' : '#333',
+                            background: activeTab === 'history' ? '#3b82f6' : 'transparent',
+                            color: activeTab === 'history' ? 'white' : '#1e293b',
                             cursor: 'pointer',
                             borderRadius: '8px 8px 0 0',
                             fontWeight: 'bold'
@@ -246,7 +267,7 @@ function IssueDetails({ user }) {
                 {activeTab === 'comments' && (
                     <div>
                         {user && (
-                            <form onSubmit={handleAddComment} style={{ marginBottom: '2rem', padding: '1rem', background: '#f9f9f9', borderRadius: '10px' }}>
+                            <form onSubmit={handleAddComment} style={{ marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
                                 <h3>Add a Comment</h3>
                                 <div className="form-group">
                                     <textarea
@@ -255,7 +276,7 @@ function IssueDetails({ user }) {
                                         rows="3"
                                         placeholder="Write your comment here..."
                                         required
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}
                                     />
                                 </div>
                                 <button type="submit" className="btn-primary" disabled={submitting}>
@@ -267,26 +288,65 @@ function IssueDetails({ user }) {
                         <div>
                             <h3>All Comments</h3>
                             {comments.length === 0 ? (
-                                <p style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
+                                <p style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
                                     No comments yet. Be the first to comment!
                                 </p>
                             ) : (
-                                comments.map(comment => (
-                                    <div key={comment._id} style={{ 
-                                        background: '#fff', 
-                                        border: '1px solid #e0e0e0',
-                                        borderRadius: '10px', 
-                                        padding: '1rem', 
-                                        marginBottom: '1rem',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                            <strong style={{ color: '#667eea' }}>👤 {comment.userFullname || comment.userEmail}</strong>
-                                            <small style={{ color: '#999' }}>{new Date(comment.createdAt).toLocaleString()}</small>
+                                comments.map(comment => {
+                                    const canModify = canModifyComment(comment);
+                                    const isEditing = editingCommentId === comment._id;
+                                    
+                                    return (
+                                        <div key={comment._id} style={{ 
+                                            background: '#fff', 
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '10px', 
+                                            padding: '1rem', 
+                                            marginBottom: '1rem',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                                <strong style={{ color: '#3b82f6' }}>👤 {comment.userFullname || comment.userEmail}</strong>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <small style={{ color: '#94a3b8' }}>{new Date(comment.createdAt).toLocaleString()}</small>
+                                                    {canModify && !isEditing && (
+                                                        <>
+                                                            <button 
+                                                                onClick={(e) => handleStartEdit(comment, e)}
+                                                                style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: '0.75rem' }}
+                                                            >
+                                                                ✏️ Edit
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => handleDeleteComment(comment._id, e)}
+                                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}
+                                                            >
+                                                                🗑️ Delete
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            {isEditing ? (
+                                                <div>
+                                                    <textarea
+                                                        value={editingCommentText}
+                                                        onChange={(e) => setEditingCommentText(e.target.value)}
+                                                        rows="3"
+                                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '0.5rem' }}
+                                                    />
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button onClick={(e) => handleSaveEdit(comment._id, e)} className="btn-primary-sm">Save</button>
+                                                        <button onClick={handleCancelEdit} className="btn-secondary-sm">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p style={{ margin: '0.5rem 0', lineHeight: '1.5', color: '#1e293b' }}>{comment.comment}</p>
+                                            )}
                                         </div>
-                                        <p style={{ margin: '0.5rem 0', lineHeight: '1.5' }}>{comment.comment}</p>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
@@ -295,39 +355,38 @@ function IssueDetails({ user }) {
                 {activeTab === 'history' && (
                     <div>
                         {history.length === 0 ? (
-                            <p style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
+                            <p style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
                                 No history available for this issue.
                             </p>
                         ) : (
                             history.map((item, index) => (
                                 <div key={index} style={{ 
-                                    background: '#fff', 
-                                    borderLeft: `3px solid ${item.action === 'CREATED' ? '#28a745' : item.action === 'ASSIGNED' ? '#ff9800' : '#667eea'}`,
+                                    background: '#f8fafc', 
+                                    borderLeft: `3px solid ${item.action === 'CREATED' ? '#10b981' : item.action === 'ASSIGNED' ? '#f59e0b' : '#3b82f6'}`,
                                     borderRadius: '10px', 
                                     padding: '1rem', 
-                                    marginBottom: '1rem',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                                    marginBottom: '1rem'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <strong style={{ color: '#764ba2' }}>
+                                        <strong style={{ color: '#1e293b' }}>
                                             {item.action === 'CREATED' && '📝 Issue Created'}
                                             {item.action === 'ASSIGNED' && '👨‍💻 Issue Assigned'}
                                             {item.action === 'STATUS_CHANGED' && '🔄 Status Changed'}
                                             {item.action === 'CLOSED' && '✅ Issue Closed'}
                                         </strong>
-                                        <small style={{ color: '#999' }}>{new Date(item.changedAt).toLocaleString()}</small>
+                                        <small style={{ color: '#94a3b8' }}>{new Date(item.changedAt).toLocaleString()}</small>
                                     </div>
                                     {item.oldStatus && item.newStatus && (
-                                        <p style={{ margin: '0.25rem 0' }}>
+                                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>
                                             Status changed from <strong>{item.oldStatus}</strong> to <strong>{item.newStatus}</strong>
                                         </p>
                                     )}
                                     {item.assignedTo && (
-                                        <p style={{ margin: '0.25rem 0' }}>
+                                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>
                                             Assigned to Developer #{item.assignedTo}
                                         </p>
                                     )}
-                                    <small style={{ color: '#666' }}>By: {item.changedBy}</small>
+                                    <small style={{ color: '#64748b' }}>By: {item.changedBy}</small>
                                 </div>
                             ))
                         )}

@@ -1779,3 +1779,42 @@ body {
     background: #f8fafc;
     border-radius: 12px;
 }
+
+.delete-comment-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.delete-comment-btn:hover {
+    background: #fee2e2;
+}
+
+/* Button styles */
+.btn-primary-sm {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.btn-secondary-sm {
+    background: #e2e8f0;
+    color: #1e293b;
+    border: none;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.btn-secondary-sm:hover {
+    background: #cbd5e1;
+}
